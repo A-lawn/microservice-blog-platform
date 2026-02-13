@@ -299,5 +299,4 @@ chore: 构建/工具
 
 ## License
 
----
-MIT License · Copyright (c) 2026 A-lawn
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
