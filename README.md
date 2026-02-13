@@ -299,4 +299,5 @@ chore: 构建/工具
 
 ## License
 
-MIT License
+---
+MIT License · Copyright (c) 2026 A-lawn
