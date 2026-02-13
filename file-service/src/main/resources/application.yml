@@ -1,0 +1,67 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: file-service
+  
+  profiles:
+    active: dev
+  
+  cloud:
+    nacos:
+      config:
+        import-check:
+          enabled: false
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:dev}
+        group: ${NACOS_GROUP:blog-platform}
+  
+  config:
+    import:
+      - optional:file:../../config/common-nacos.yml
+      - optional:file:../../config/common-monitoring.yml
+  
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
+
+file:
+  storage:
+    type: ${STORAGE_TYPE:minio}
+    minio:
+      endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+      access-key: ${MINIO_ACCESS_KEY:minioadmin}
+      secret-key: ${MINIO_SECRET_KEY:minioadmin}
+      bucket: ${MINIO_BUCKET:blog-files}
+      secure: false
+    local:
+      base-path: ${LOCAL_STORAGE_PATH:./uploads}
+      temp-path: ${LOCAL_TEMP_PATH:./temp}
+    allowed-types:
+      - image/jpeg
+      - image/png
+      - image/gif
+      - image/webp
+      - image/svg+xml
+      - application/pdf
+      - text/plain
+      - text/markdown
+    max-size: 52428800
+
+image:
+  thumbnail:
+    enabled: true
+    sizes:
+      - 100
+      - 200
+      - 400
+      - 800
+    quality: 0.85
+
+logging:
+  level:
+    com.blog.platform.file: DEBUG
+    io.minio: INFO

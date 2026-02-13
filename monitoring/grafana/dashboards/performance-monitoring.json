@@ -1,0 +1,198 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "微服务博客平台 - 性能监控",
+    "tags": ["blog-platform", "performance", "monitoring"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "API响应时间分布",
+        "type": "heatmap",
+        "targets": [
+          {
+            "expr": "rate(http_server_requests_seconds_bucket{job=~\"user-service|article-service|comment-service|gateway\"}[5m])",
+            "legendFormat": "{{job}} - {{le}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        },
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "吞吐量 (RPS)",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum(rate(http_server_requests_seconds_count{job=\"user-service\"}[5m]))",
+            "legendFormat": "用户服务"
+          },
+          {
+            "expr": "sum(rate(http_server_requests_seconds_count{job=\"article-service\"}[5m]))",
+            "legendFormat": "文章服务"
+          },
+          {
+            "expr": "sum(rate(http_server_requests_seconds_count{job=\"comment-service\"}[5m]))",
+            "legendFormat": "评论服务"
+          },
+          {
+            "expr": "sum(rate(http_server_requests_seconds_count{job=\"gateway\"}[5m]))",
+            "legendFormat": "网关"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 3,
+        "title": "平均响应时间",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(http_server_requests_seconds_bucket{job=\"user-service\"}[5m]))",
+            "legendFormat": "用户服务 - 50th"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{job=\"user-service\"}[5m]))",
+            "legendFormat": "用户服务 - 95th"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(http_server_requests_seconds_bucket{job=\"article-service\"}[5m]))",
+            "legendFormat": "文章服务 - 50th"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{job=\"article-service\"}[5m]))",
+            "legendFormat": "文章服务 - 95th"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "数据库连接池",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "hikaricp_connections_active{job=~\"user-service|article-service|comment-service\"}",
+            "legendFormat": "{{job}} - Active"
+          },
+          {
+            "expr": "hikaricp_connections_idle{job=~\"user-service|article-service|comment-service\"}",
+            "legendFormat": "{{job}} - Idle"
+          },
+          {
+            "expr": "hikaricp_connections_max{job=~\"user-service|article-service|comment-service\"}",
+            "legendFormat": "{{job}} - Max"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 5,
+        "title": "GC性能",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(jvm_gc_collection_seconds_sum{job=~\"user-service|article-service|comment-service|gateway\"}[5m])",
+            "legendFormat": "{{job}} - {{gc}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      },
+      {
+        "id": 6,
+        "title": "业务操作耗时",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(user_registration_duration_bucket[5m]))",
+            "legendFormat": "用户注册 - 95th"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(article_creation_duration_bucket[5m]))",
+            "legendFormat": "文章创建 - 95th"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(comment_creation_duration_bucket[5m]))",
+            "legendFormat": "评论创建 - 95th"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24}
+      },
+      {
+        "id": 7,
+        "title": "缓存命中率",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(cache_gets_total{result=\"hit\"}[5m]) / rate(cache_gets_total[5m]) * 100",
+            "legendFormat": "{{cache}} - 命中率"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24}
+      },
+      {
+        "id": 8,
+        "title": "线程池状态",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "jvm_threads_live_threads{job=~\"user-service|article-service|comment-service|gateway\"}",
+            "legendFormat": "{{job}} - Live Threads"
+          },
+          {
+            "expr": "jvm_threads_daemon_threads{job=~\"user-service|article-service|comment-service|gateway\"}",
+            "legendFormat": "{{job}} - Daemon Threads"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 32}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "15s"
+  }
+}

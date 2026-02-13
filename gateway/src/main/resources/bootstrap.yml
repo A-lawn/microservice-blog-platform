@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: gateway
+  profiles:
+    active: dev
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:dev}
+        group: ${NACOS_GROUP:blog-platform}
+        file-extension: yml
+        timeout: 3000
+        config-long-poll-timeout: 46000
+        config-retry-time: 2333
+        max-retry: 10
+        enable-remote-sync-config: false
+        refresh-enabled: true
+        # 共享配置
+        shared-configs:
+          - data-id: common-config.yml
+            group: blog-platform
+            refresh: true
+          - data-id: gateway-config.yml
+            group: blog-platform
+            refresh: true
+        # 扩展配置
+        extension-configs:
+          - data-id: gateway-${spring.profiles.active}.yml
+            group: blog-platform
+            refresh: true
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:dev}
+        group: ${NACOS_GROUP:blog-platform}

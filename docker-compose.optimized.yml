@@ -1,0 +1,551 @@
+version: '3.8'
+
+services:
+  # Infrastructure Services
+  nacos:
+    image: nacos/nacos-server:v2.2.3
+    container_name: nacos
+    environment:
+      - MODE=standalone
+      - SPRING_DATASOURCE_PLATFORM=mysql
+      - MYSQL_SERVICE_HOST=nacos-mysql
+      - MYSQL_SERVICE_DB_NAME=nacos_devtest
+      - MYSQL_SERVICE_PORT=3306
+      - MYSQL_SERVICE_USER=nacos
+      - MYSQL_SERVICE_PASSWORD=nacos
+      - MYSQL_SERVICE_DB_PARAM=characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useUnicode=true&useSSL=false&serverTimezone=UTC
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+    depends_on:
+      - nacos-mysql
+    volumes:
+      - ./nacos/logs:/home/nacos/logs
+    networks:
+      - blog-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8848/nacos/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  nacos-mysql:
+    image: mysql:8.0
+    container_name: nacos-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+      - MYSQL_DATABASE=nacos_devtest
+      - MYSQL_USER=nacos
+      - MYSQL_PASSWORD=nacos
+    ports:
+      - "3307:3306"
+    volumes:
+      - nacos_mysql_data:/var/lib/mysql
+      - ./nacos/mysql-schema.sql:/docker-entrypoint-initdb.d/mysql-schema.sql
+    networks:
+      - blog-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Database Services
+  user-mysql:
+    image: mysql:8.0
+    container_name: user-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+      - MYSQL_DATABASE=user_db
+    ports:
+      - "3308:3306"
+    volumes:
+      - user_mysql_data:/var/lib/mysql
+      - ./sql/user-schema.sql:/docker-entrypoint-initdb.d/user-schema.sql
+    networks:
+      - blog-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  article-mysql:
+    image: mysql:8.0
+    container_name: article-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+      - MYSQL_DATABASE=article_db
+    ports:
+      - "3309:3306"
+    volumes:
+      - article_mysql_data:/var/lib/mysql
+      - ./sql/article-schema.sql:/docker-entrypoint-initdb.d/article-schema.sql
+    networks:
+      - blog-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  comment-mysql:
+    image: mysql:8.0
+    container_name: comment-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+      - MYSQL_DATABASE=comment_db
+    ports:
+      - "3310:3306"
+    volumes:
+      - comment_mysql_data:/var/lib/mysql
+      - ./sql/comment-schema.sql:/docker-entrypoint-initdb.d/comment-schema.sql
+    networks:
+      - blog-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - blog-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Elasticsearch
+  elasticsearch:
+    image: elasticsearch:8.8.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms256m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - blog-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # RocketMQ NameServer
+  rocketmq-nameserver:
+    image: apache/rocketmq:4.9.4
+    container_name: rocketmq-nameserver
+    ports:
+      - "9876:9876"
+    environment:
+      - JAVA_OPT_EXT=-Xms128m -Xmx256m
+    command: sh mqnamesrv
+    networks:
+      - blog-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+          cpus: '0.25'
+        reservations:
+          memory: 192M
+          cpus: '0.1'
+
+  # RocketMQ Broker
+  rocketmq-broker:
+    image: apache/rocketmq:4.9.4
+    container_name: rocketmq-broker
+    ports:
+      - "10909:10909"
+      - "10911:10911"
+    environment:
+      - NAMESRV_ADDR=rocketmq-nameserver:9876
+      - JAVA_OPT_EXT=-Xms256m -Xmx512m
+    command: sh mqbroker -c /home/rocketmq/rocketmq-4.9.4/conf/broker.conf
+    volumes:
+      - ./rocketmq/broker.conf:/home/rocketmq/rocketmq-4.9.4/conf/broker.conf
+    depends_on:
+      - rocketmq-nameserver
+    networks:
+      - blog-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '0.5'
+        reservations:
+          memory: 384M
+          cpus: '0.25'
+
+  # Seata Server
+  seata-server:
+    image: seataio/seata-server:1.6.1
+    container_name: seata-server
+    ports:
+      - "8091:8091"
+    environment:
+      - SEATA_PORT=8091
+      - STORE_MODE=db
+      - SEATA_CONFIG_NAME=file:/root/seata-config/registry
+    volumes:
+      - ./seata/config:/root/seata-config
+    networks:
+      - blog-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # Business Services
+  user-service:
+    build: ./user-service
+    container_name: user-service
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://user-mysql:3306/user_db?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8mb4
+      - SPRING_REDIS_HOST=redis
+      - NACOS_SERVER_ADDR=nacos:8848
+      - ROCKETMQ_NAME_SERVER=rocketmq-nameserver:9876
+      - SEATA_SERVER_ADDR=seata-server:8091
+    depends_on:
+      - nacos
+      - user-mysql
+      - redis
+      - rocketmq-nameserver
+      - seata-server
+    networks:
+      - blog-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '0.5'
+        reservations:
+          memory: 384M
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  article-service:
+    build: ./article-service
+    container_name: article-service
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://article-mysql:3306/article_db?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8mb4
+      - SPRING_REDIS_HOST=redis
+      - SPRING_ELASTICSEARCH_URIS=http://elasticsearch:9200
+      - NACOS_SERVER_ADDR=nacos:8848
+      - ROCKETMQ_NAME_SERVER=rocketmq-nameserver:9876
+      - SEATA_SERVER_ADDR=seata-server:8091
+    depends_on:
+      - nacos
+      - article-mysql
+      - redis
+      - elasticsearch
+      - rocketmq-nameserver
+      - seata-server
+    networks:
+      - blog-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1280M
+          cpus: '0.75'
+        reservations:
+          memory: 640M
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  comment-service:
+    build: ./comment-service
+    container_name: comment-service
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://comment-mysql:3306/comment_db?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8mb4
+      - SPRING_REDIS_HOST=redis
+      - SPRING_ELASTICSEARCH_URIS=http://elasticsearch:9200
+      - NACOS_SERVER_ADDR=nacos:8848
+      - ROCKETMQ_NAME_SERVER=rocketmq-nameserver:9876
+      - SEATA_SERVER_ADDR=seata-server:8091
+    depends_on:
+      - nacos
+      - comment-mysql
+      - redis
+      - elasticsearch
+      - rocketmq-nameserver
+      - seata-server
+    networks:
+      - blog-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '0.5'
+        reservations:
+          memory: 384M
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  gateway:
+    build: ./gateway
+    container_name: gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_REDIS_HOST=redis
+      - NACOS_SERVER_ADDR=nacos:8848
+    depends_on:
+      - nacos
+      - redis
+      - user-service
+      - article-service
+      - comment-service
+    networks:
+      - blog-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: '0.75'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  # Monitoring Services
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus-alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.enable-lifecycle'
+    networks:
+      - blog-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+    networks:
+      - blog-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki.yml:/etc/loki/local-config.yaml
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - blog-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    volumes:
+      - ./monitoring/promtail.yml:/etc/promtail/config.yml
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    networks:
+      - blog-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.1'
+        reservations:
+          memory: 64M
+          cpus: '0.05'
+
+volumes:
+  nacos_mysql_data:
+  user_mysql_data:
+  article_mysql_data:
+  comment_mysql_data:
+  redis_data:
+  elasticsearch_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+
+networks:
+  blog-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

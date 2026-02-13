@@ -1,0 +1,64 @@
+spring:
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:dev}
+        group: ${NACOS_GROUP:blog-platform}
+        service: ${spring.application.name}
+        weight: 1
+        cluster-name: DEFAULT
+        metadata:
+          version: 1.0.0
+          zone: zone1
+          preserved.register.source: SPRING_CLOUD
+        heart-beat-interval: 5000
+        heart-beat-timeout: 15000
+        ip-delete-timeout: 30000
+        instance-enabled: true
+        ephemeral: true
+        secure: false
+        access-key: ${NACOS_ACCESS_KEY:}
+        secret-key: ${NACOS_SECRET_KEY:}
+        log-name: nacos-discovery.log
+        endpoint: ""
+        register-enabled: true
+        watch-delay: 30000
+        naming-load-cache-at-start: false
+        fail-fast: true
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:dev}
+        group: ${NACOS_GROUP:blog-platform}
+        file-extension: yml
+        timeout: 3000
+        config-long-poll-timeout: 46000
+        config-retry-time: 2333
+        max-retry: 10
+        enable-remote-sync-config: false
+        refresh-enabled: true
+    loadbalancer:
+      ribbon:
+        enabled: false
+      cache:
+        enabled: true
+        ttl: 35s
+        capacity: 256
+      health-check:
+        initial-delay: 0s
+        interval: 25s
+        refetch-instances: false
+        refetch-instances-interval: 25s
+        repeat-health-check: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:nacos:8848}
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:nacos:8848}

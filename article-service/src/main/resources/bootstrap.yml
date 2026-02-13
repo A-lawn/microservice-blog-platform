@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: article-service
+  profiles:
+    active: dev
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:dev}
+        group: ${NACOS_GROUP:blog-platform}
+        file-extension: yml
+        timeout: 3000
+        config-long-poll-timeout: 46000
+        config-retry-time: 2333
+        max-retry: 10
+        enable-remote-sync-config: false
+        refresh-enabled: true
+        import-check:
+          enabled: false
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+        namespace: ${NACOS_NAMESPACE:dev}
+        group: ${NACOS_GROUP:blog-platform}

@@ -1,0 +1,41 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: blog-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+    ports:
+      - "3306:3306"
+    volumes:
+      - blog_mysql_data:/var/lib/mysql
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: blog-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  nacos:
+    image: nacos/nacos-server:v2.2.3
+    container_name: blog-nacos
+    environment:
+      - MODE=standalone
+      - PREFER_HOST_MODE=hostname
+    ports:
+      - "8848:8848"
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+volumes:
+  blog_mysql_data:
+
+networks:
+  blog-network:
+    driver: bridge

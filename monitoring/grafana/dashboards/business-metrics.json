@@ -1,0 +1,203 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "微服务博客平台 - 业务指标",
+    "tags": ["blog-platform", "business", "metrics"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "用户注册统计",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "user_registrations_total",
+            "legendFormat": "总注册数"
+          },
+          {
+            "expr": "rate(user_registrations_total[1h])",
+            "legendFormat": "每小时注册数"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "文章发布统计",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "article_publications_total",
+            "legendFormat": "总发布数"
+          },
+          {
+            "expr": "article_total_count",
+            "legendFormat": "文章总数"
+          },
+          {
+            "expr": "article_draft_count",
+            "legendFormat": "草稿数"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "评论统计",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "comment_creations_total",
+            "legendFormat": "总评论数"
+          },
+          {
+            "expr": "comment_replies_total",
+            "legendFormat": "回复数"
+          },
+          {
+            "expr": "comment_active_count",
+            "legendFormat": "活跃评论"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0}
+      },
+      {
+        "id": 4,
+        "title": "用户活动趋势",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(user_registrations_total[5m])",
+            "legendFormat": "注册速率"
+          },
+          {
+            "expr": "rate(user_logins_total[5m])",
+            "legendFormat": "登录速率"
+          },
+          {
+            "expr": "user_active_sessions",
+            "legendFormat": "活跃会话"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "文章活动趋势",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(article_creations_total[5m])",
+            "legendFormat": "创建速率"
+          },
+          {
+            "expr": "rate(article_publications_total[5m])",
+            "legendFormat": "发布速率"
+          },
+          {
+            "expr": "rate(article_views_total[5m])",
+            "legendFormat": "浏览速率"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 6,
+        "title": "评论活动趋势",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(comment_creations_total[5m])",
+            "legendFormat": "评论创建速率"
+          },
+          {
+            "expr": "rate(comment_replies_total[5m])",
+            "legendFormat": "回复速率"
+          },
+          {
+            "expr": "rate(comment_moderations_total[5m])",
+            "legendFormat": "审核速率"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 7,
+        "title": "登录失败率",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(user_login_failures_total[5m]) / rate(user_logins_total[5m]) * 100",
+            "legendFormat": "登录失败率"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      },
+      {
+        "id": 8,
+        "title": "搜索活动",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(article_searches_total[5m])",
+            "legendFormat": "文章搜索速率"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24}
+      }
+    ],
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "refresh": "1m"
+  }
+}

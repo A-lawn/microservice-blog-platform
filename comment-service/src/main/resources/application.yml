@@ -1,0 +1,113 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: comment-service
+  
+  profiles:
+    active: dev
+  
+  cloud:
+    nacos:
+      server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+      discovery:
+        namespace: ${NACOS_NAMESPACE:dev}
+        group: ${NACOS_GROUP:blog-platform}
+        enabled: ${NACOS_DISCOVERY_ENABLED:true}
+      config:
+        import-check:
+          enabled: false
+  
+  config:
+    import:
+      - optional:file:../../config/common-nacos.yml
+      - optional:file:../../config/common-monitoring.yml
+      - optional:file:../../config/common-seata.yml
+      - optional:file:../../config/common-rocketmq.yml
+      - optional:file:../../config/common-redis.yml
+  
+  datasource:
+    comment:
+      jdbc-url: ${COMMENT_DB_URL:jdbc:mysql://localhost:3306/comment_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+      username: ${COMMENT_DB_USERNAME:root}
+      password: ${COMMENT_DB_PASSWORD:root123}
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+
+  
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    validate-on-migrate: true
+  
+  data:
+    elasticsearch:
+      repositories:
+        enabled: false
+      uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
+
+config:
+  fallback:
+    enabled: true
+    cache-dir: ./config-cache
+    cache-interval: 30
+  retry:
+    max-attempts: 3
+    initial-delay: 1000
+    max-delay: 10000
+    multiplier: 2.0
+    timeout: 30000
+
+comment-service:
+  version: 1.0.0
+  maxCommentLength: 1000
+  maxReplyDepth: 5
+  enableModeration: true
+  enableNotification: true
+  enableSearch: false
+  defaultPageSize: 20
+
+rocketmq:
+  name-server: ${ROCKETMQ_NAME_SERVER:localhost:9876}
+  producer:
+    group: comment-service-producer
+    send-message-timeout: 3000
+    retry-times-when-send-failed: 2
+
+seata:
+  enabled: false
+  enable-auto-data-source-proxy: false
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  
+  datasource:
+    comment:
+      jdbc-url: ${COMMENT_DB_URL:jdbc:mysql://mysql:3306/comment_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=UTC}
+  
+  data:
+    elasticsearch:
+      uris: ${ELASTICSEARCH_URIS:http://elasticsearch:9200}

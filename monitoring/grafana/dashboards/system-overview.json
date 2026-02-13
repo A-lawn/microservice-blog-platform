@@ -1,0 +1,156 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "微服务博客平台 - 系统概览",
+    "tags": ["blog-platform", "system", "overview"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "服务状态",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=~\"user-service|article-service|comment-service|gateway\"}",
+            "legendFormat": "{{job}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "CPU使用率",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "100 - (avg by (instance) (irate(process_cpu_seconds_total{job=~\"user-service|article-service|comment-service|gateway\"}[5m])) * 100)",
+            "legendFormat": "{{job}} - {{instance}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "内存使用率",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "(jvm_memory_used_bytes{job=~\"user-service|article-service|comment-service|gateway\"} / jvm_memory_max_bytes{job=~\"user-service|article-service|comment-service|gateway\"}) * 100",
+            "legendFormat": "{{job}} - {{area}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "JVM堆内存使用",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "jvm_memory_used_bytes{job=~\"user-service|article-service|comment-service|gateway\", area=\"heap\"}",
+            "legendFormat": "{{job}} - Used"
+          },
+          {
+            "expr": "jvm_memory_max_bytes{job=~\"user-service|article-service|comment-service|gateway\", area=\"heap\"}",
+            "legendFormat": "{{job}} - Max"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "bytes"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "HTTP请求速率",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(http_server_requests_seconds_count{job=~\"user-service|article-service|comment-service|gateway\"}[5m])",
+            "legendFormat": "{{job}} - {{method}} {{uri}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 6,
+        "title": "HTTP响应时间",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{job=~\"user-service|article-service|comment-service|gateway\"}[5m]))",
+            "legendFormat": "{{job}} - 95th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(http_server_requests_seconds_bucket{job=~\"user-service|article-service|comment-service|gateway\"}[5m]))",
+            "legendFormat": "{{job}} - 50th percentile"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      },
+      {
+        "id": 7,
+        "title": "错误率",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(http_server_requests_seconds_count{job=~\"user-service|article-service|comment-service|gateway\", status=~\"4..|5..\"}[5m]) / rate(http_server_requests_seconds_count{job=~\"user-service|article-service|comment-service|gateway\"}[5m]) * 100",
+            "legendFormat": "{{job}} - Error Rate"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0
+          }
+        },
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s"
+  }
+}

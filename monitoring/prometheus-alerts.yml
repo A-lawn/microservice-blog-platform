@@ -1,0 +1,173 @@
+groups:
+  - name: blog-platform-system-alerts
+    rules:
+      # 服务可用性告警
+      - alert: ServiceDown
+        expr: up{job=~"user-service|article-service|comment-service|gateway"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "服务 {{ $labels.job }} 不可用"
+          description: "服务 {{ $labels.job }} 在实例 {{ $labels.instance }} 上已经停止运行超过1分钟"
+
+      # CPU使用率告警
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance, job) (irate(process_cpu_seconds_total{job=~"user-service|article-service|comment-service|gateway"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "{{ $labels.job }} CPU使用率过高"
+          description: "服务 {{ $labels.job }} 在实例 {{ $labels.instance }} 上的CPU使用率为 {{ $value }}%，已持续5分钟"
+
+      # 内存使用率告警
+      - alert: HighMemoryUsage
+        expr: (jvm_memory_used_bytes{job=~"user-service|article-service|comment-service|gateway", area="heap"} / jvm_memory_max_bytes{job=~"user-service|article-service|comment-service|gateway", area="heap"}) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "{{ $labels.job }} 内存使用率过高"
+          description: "服务 {{ $labels.job }} 在实例 {{ $labels.instance }} 上的堆内存使用率为 {{ $value }}%，已持续5分钟"
+
+      # 磁盘空间告警
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 10
+        for: 5m
+        labels:
+          severity: critical
+          category: infrastructure
+        annotations:
+          summary: "磁盘空间不足"
+          description: "实例 {{ $labels.instance }} 的根分区可用空间仅剩 {{ $value }}%"
+
+  - name: blog-platform-application-alerts
+    rules:
+      # HTTP错误率告警
+      - alert: HighErrorRate
+        expr: (rate(http_server_requests_seconds_count{job=~"user-service|article-service|comment-service|gateway", status=~"4..|5.."}[5m]) / rate(http_server_requests_seconds_count{job=~"user-service|article-service|comment-service|gateway"}[5m])) * 100 > 5
+        for: 5m
+        labels:
+          severity: warning
+          category: application
+        annotations:
+          summary: "{{ $labels.job }} HTTP错误率过高"
+          description: "服务 {{ $labels.job }} 的HTTP错误率为 {{ $value }}%，已持续5分钟"
+
+      # 响应时间告警
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{job=~"user-service|article-service|comment-service|gateway"}[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "{{ $labels.job }} 响应时间过长"
+          description: "服务 {{ $labels.job }} 的95%响应时间为 {{ $value }}秒，已持续5分钟"
+
+      # 数据库连接池告警
+      - alert: DatabaseConnectionPoolExhausted
+        expr: hikaricp_connections_active{job=~"user-service|article-service|comment-service"} / hikaricp_connections_max{job=~"user-service|article-service|comment-service"} > 0.9
+        for: 2m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: "{{ $labels.job }} 数据库连接池即将耗尽"
+          description: "服务 {{ $labels.job }} 的数据库连接池使用率为 {{ $value }}%，已持续2分钟"
+
+      # GC时间告警
+      - alert: HighGCTime
+        expr: rate(jvm_gc_collection_seconds_sum{job=~"user-service|article-service|comment-service|gateway"}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "{{ $labels.job }} GC时间过长"
+          description: "服务 {{ $labels.job }} 的GC时间占比为 {{ $value }}%，已持续5分钟"
+
+  - name: blog-platform-business-alerts
+    rules:
+      # 登录失败率告警
+      - alert: HighLoginFailureRate
+        expr: (rate(user_login_failures_total[5m]) / rate(user_logins_total[5m])) * 100 > 20
+        for: 5m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "用户登录失败率过高"
+          description: "用户登录失败率为 {{ $value }}%，可能存在安全风险，已持续5分钟"
+
+      # 文章发布异常告警
+      - alert: ArticlePublishFailure
+        expr: increase(article_publications_total[1h]) == 0 and increase(article_creations_total[1h]) > 0
+        for: 30m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: "文章发布功能异常"
+          description: "过去1小时内有文章创建但没有文章发布，可能存在发布功能异常"
+
+      # 评论审核积压告警
+      - alert: CommentModerationBacklog
+        expr: comment_total_count - comment_active_count - comment_moderated_count > 100
+        for: 15m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: "评论审核积压"
+          description: "待审核评论数量为 {{ $value }}，已持续15分钟"
+
+  - name: blog-platform-infrastructure-alerts
+    rules:
+      # Redis连接告警
+      - alert: RedisConnectionFailure
+        expr: redis_connected_clients == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: infrastructure
+        annotations:
+          summary: "Redis连接失败"
+          description: "Redis服务器没有活跃连接，可能服务不可用"
+
+      # Elasticsearch集群状态告警
+      - alert: ElasticsearchClusterRed
+        expr: elasticsearch_cluster_health_status{color="red"} == 1
+        for: 1m
+        labels:
+          severity: critical
+          category: infrastructure
+        annotations:
+          summary: "Elasticsearch集群状态异常"
+          description: "Elasticsearch集群状态为红色，存在数据丢失风险"
+
+      # 消息队列积压告警
+      - alert: MessageQueueBacklog
+        expr: rocketmq_consumer_lag > 1000
+        for: 5m
+        labels:
+          severity: warning
+          category: infrastructure
+        annotations:
+          summary: "消息队列积压"
+          description: "RocketMQ消费者延迟为 {{ $value }} 条消息，已持续5分钟"
+
+      # 分布式事务失败告警
+      - alert: DistributedTransactionFailure
+        expr: increase(seata_transaction_rollback_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          category: transaction
+        annotations:
+          summary: "分布式事务失败率过高"
+          description: "过去5分钟内有 {{ $value }} 个分布式事务回滚"

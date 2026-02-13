@@ -1,0 +1,352 @@
+version: '3.8'
+
+services:
+  # Infrastructure Services
+  nacos:
+    image: nacos/nacos-server:v2.2.3
+    container_name: nacos
+    environment:
+      - MODE=standalone
+      - SPRING_DATASOURCE_PLATFORM=mysql
+      - MYSQL_SERVICE_HOST=nacos-mysql
+      - MYSQL_SERVICE_DB_NAME=nacos_devtest
+      - MYSQL_SERVICE_PORT=3306
+      - MYSQL_SERVICE_USER=nacos
+      - MYSQL_SERVICE_PASSWORD=nacos
+      - MYSQL_SERVICE_DB_PARAM=characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useUnicode=true&useSSL=false&serverTimezone=UTC
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+    depends_on:
+      - nacos-mysql
+    volumes:
+      - ./nacos/logs:/home/nacos/logs
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  nacos-mysql:
+    image: mysql:8.0
+    container_name: nacos-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+      - MYSQL_DATABASE=nacos_devtest
+      - MYSQL_USER=nacos
+      - MYSQL_PASSWORD=nacos
+    ports:
+      - "3307:3306"
+    volumes:
+      - nacos_mysql_data:/var/lib/mysql
+      - ./nacos/mysql-schema.sql:/docker-entrypoint-initdb.d/mysql-schema.sql
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  # Database Services
+  user-mysql:
+    image: mysql:8.0
+    container_name: user-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+      - MYSQL_DATABASE=user_db
+      - MYSQL_USER=blog_user
+      - MYSQL_PASSWORD=blog123
+    ports:
+      - "3306:3306"
+    volumes:
+      - user_mysql_data:/var/lib/mysql
+      - ./sql/user-schema.sql:/docker-entrypoint-initdb.d/user-schema.sql
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  article-mysql:
+    image: mysql:8.0
+    container_name: article-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+      - MYSQL_DATABASE=article_db
+      - MYSQL_USER=blog_user
+      - MYSQL_PASSWORD=blog123
+    ports:
+      - "3308:3306"
+    volumes:
+      - article_mysql_data:/var/lib/mysql
+      - ./sql/article-schema.sql:/docker-entrypoint-initdb.d/article-schema.sql
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  comment-mysql:
+    image: mysql:8.0
+    container_name: comment-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+      - MYSQL_DATABASE=comment_db
+      - MYSQL_USER=blog_user
+      - MYSQL_PASSWORD=blog123
+    ports:
+      - "3309:3306"
+    volumes:
+      - comment_mysql_data:/var/lib/mysql
+      - ./sql/comment-schema.sql:/docker-entrypoint-initdb.d/comment-schema.sql
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  # Cache and Search
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  elasticsearch:
+    image: elasticsearch:8.8.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  # Message Queue
+  rocketmq-namesrv:
+    image: apache/rocketmq:4.9.4
+    container_name: rocketmq-namesrv
+    ports:
+      - "9876:9876"
+    volumes:
+      - rocketmq_namesrv_logs:/home/rocketmq/logs
+    command: sh mqnamesrv
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  rocketmq-broker:
+    image: apache/rocketmq:4.9.4
+    container_name: rocketmq-broker
+    ports:
+      - "10909:10909"
+      - "10911:10911"
+    volumes:
+      - rocketmq_broker_logs:/home/rocketmq/logs
+      - rocketmq_broker_store:/home/rocketmq/store
+      - ./rocketmq/broker.conf:/home/rocketmq/rocketmq-4.9.4/conf/broker.conf
+    command: sh mqbroker -n rocketmq-namesrv:9876 -c /home/rocketmq/rocketmq-4.9.4/conf/broker.conf
+    depends_on:
+      - rocketmq-namesrv
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  seata-server:
+    image: seataio/seata-server:1.7.1
+    container_name: seata-server
+    ports:
+      - "8091:8091"
+    environment:
+      - SEATA_PORT=8091
+      - STORE_MODE=db
+      - SEATA_CONFIG_NAME=file:/root/seata-config/registry
+    volumes:
+      - ./seata/config:/root/seata-config
+    depends_on:
+      - nacos-mysql
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  # Monitoring Services
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus-alerts.yml:/etc/prometheus/prometheus-alerts.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki.yml:/etc/loki/local-config.yaml
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    volumes:
+      - ./monitoring/promtail.yml:/etc/promtail/config.yml
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  # Business Services (will be built and started separately)
+  gateway:
+    build: ./gateway
+    container_name: gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - JAVA_OPTS=-Xms256m -Xmx512m -XX:+UseG1GC
+    depends_on:
+      - nacos
+      - redis
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  user-service:
+    build: ./user-service
+    container_name: user-service
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - JAVA_OPTS=-Xms256m -Xmx512m -XX:+UseG1GC
+    depends_on:
+      - nacos
+      - user-mysql
+      - redis
+      - seata-server
+      - rocketmq-broker
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  article-service:
+    build: ./article-service
+    container_name: article-service
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - JAVA_OPTS=-Xms256m -Xmx512m -XX:+UseG1GC
+    depends_on:
+      - nacos
+      - article-mysql
+      - redis
+      - elasticsearch
+      - seata-server
+      - rocketmq-broker
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  comment-service:
+    build: ./comment-service
+    container_name: comment-service
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - JAVA_OPTS=-Xms256m -Xmx512m -XX:+UseG1GC
+    depends_on:
+      - nacos
+      - comment-mysql
+      - redis
+      - seata-server
+      - rocketmq-broker
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+volumes:
+  nacos_mysql_data:
+  user_mysql_data:
+  article_mysql_data:
+  comment_mysql_data:
+  redis_data:
+  es_data:
+  rocketmq_namesrv_logs:
+  rocketmq_broker_logs:
+  rocketmq_broker_store:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+  alertmanager_data:
+
+networks:
+  blog-network:
+    driver: bridge

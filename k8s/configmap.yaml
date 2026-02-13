@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: blog-config
+  namespace: blog-platform
+data:
+  MYSQL_HOST: "mysql-service"
+  MYSQL_PORT: "3306"
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  NACOS_HOST: "nacos-service"
+  NACOS_PORT: "8848"
+  ROCKETMQ_HOST: "rocketmq-service"
+  ROCKETMQ_PORT: "9876"
+  ELASTICSEARCH_HOST: "elasticsearch-service"
+  ELASTICSEARCH_PORT: "9200"
+  MINIO_HOST: "minio-service"
+  MINIO_PORT: "9000"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: blog-secrets
+  namespace: blog-platform
+type: Opaque
+stringData:
+  MYSQL_ROOT_PASSWORD: "your_password"
+  MYSQL_USERNAME: "blog_user"
+  MYSQL_PASSWORD: "your_password"
+  REDIS_PASSWORD: ""
+  JWT_SECRET: "your_jwt_secret_key_here"
+  MINIO_ACCESS_KEY: "minioadmin"
+  MINIO_SECRET_KEY: "minioadmin"

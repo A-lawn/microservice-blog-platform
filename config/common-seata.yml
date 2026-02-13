@@ -1,0 +1,41 @@
+feature:
+  seata:
+    enabled: ${SEATA_ENABLED:false}
+
+seata:
+  enabled: ${feature.seata.enabled:false}
+  application-id: ${spring.application.name}
+  tx-service-group: blog-platform-tx-group
+  service:
+    vgroup-mapping:
+      blog-platform-tx-group: default
+    grouplist:
+      default: ${SEATA_SERVER_ADDR:127.0.0.1:8091}
+  config:
+    type: nacos
+    nacos:
+      server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+      group: SEATA_GROUP
+      namespace: ${NACOS_NAMESPACE:}
+      username: ${NACOS_USERNAME:}
+      password: ${NACOS_PASSWORD:}
+  registry:
+    type: nacos
+    nacos:
+      application: seata-server
+      server-addr: ${NACOS_SERVER_ADDR:localhost:8848}
+      group: SEATA_GROUP
+      namespace: ${NACOS_NAMESPACE:}
+      username: ${NACOS_USERNAME:}
+      password: ${NACOS_PASSWORD:}
+  data-source-proxy-mode: AT
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+seata:
+  service:
+    grouplist:
+      default: ${SEATA_SERVER_ADDR:seata-server:8091}

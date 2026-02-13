@@ -1,0 +1,127 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: blog-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+    ports:
+      - "3306:3306"
+    volumes:
+      - blog_mysql_data:/var/lib/mysql
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: blog-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  nacos:
+    image: nacos/nacos-server:v2.2.3
+    container_name: blog-nacos
+    environment:
+      - MODE=standalone
+      - PREFER_HOST_MODE=hostname
+      - JVM_XMS=512m
+      - JVM_XMX=512m
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+      - "9849:9849"
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  elasticsearch:
+    image: elasticsearch:8.8.0
+    container_name: blog-es
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  rocketmq-namesrv:
+    image: apache/rocketmq:4.9.4
+    container_name: blog-rocketmq-namesrv
+    ports:
+      - "9876:9876"
+    command: sh mqnamesrv
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  rocketmq-broker:
+    image: apache/rocketmq:4.9.4
+    container_name: blog-rocketmq-broker
+    ports:
+      - "10911:10911"
+      - "10909:10909"
+    environment:
+      - NAMESRV_ADDR=host.docker.internal:9876
+      - BROKER_IP=host.docker.internal
+    command: sh mqbroker -n host.docker.internal:9876 -c /home/rocketmq/rocketmq-4.9.4/conf/broker.conf
+    volumes:
+      - ./rocketmq/broker.conf:/home/rocketmq/rocketmq-4.9.4/conf/broker.conf
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - rocketmq-namesrv
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  seata-server:
+    image: seataio/seata-server:1.7.1
+    container_name: blog-seata
+    ports:
+      - "8091:8091"
+    environment:
+      - SEATA_PORT=8091
+      - STORE_MODE=file
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+      - "4318:4318"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki.yml:/etc/loki/local-config.yaml
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+volumes:
+  blog_mysql_data:
+  loki_data:
+
+networks:
+  blog-network:
+    driver: bridge

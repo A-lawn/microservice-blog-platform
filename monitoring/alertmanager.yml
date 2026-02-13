@@ -1,0 +1,154 @@
+global:
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alerts@blog-platform.com'
+  smtp_auth_username: 'alerts@blog-platform.com'
+  smtp_auth_password: 'your-email-password'
+
+# 告警路由配置
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'default-receiver'
+  routes:
+    # 严重告警立即发送
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 0s
+      repeat_interval: 5m
+    
+    # 安全相关告警
+    - match:
+        category: security
+      receiver: 'security-alerts'
+      group_wait: 0s
+      repeat_interval: 15m
+    
+    # 业务告警
+    - match:
+        category: business
+      receiver: 'business-alerts'
+      repeat_interval: 30m
+    
+    # 性能告警
+    - match:
+        category: performance
+      receiver: 'performance-alerts'
+      repeat_interval: 15m
+
+# 告警接收器配置
+receivers:
+  - name: 'default-receiver'
+    email_configs:
+      - to: 'admin@blog-platform.com'
+        subject: '[博客平台] {{ .GroupLabels.alertname }} 告警'
+        body: |
+          {{ range .Alerts }}
+          告警名称: {{ .Annotations.summary }}
+          告警详情: {{ .Annotations.description }}
+          告警级别: {{ .Labels.severity }}
+          告警分类: {{ .Labels.category }}
+          开始时间: {{ .StartsAt }}
+          {{ end }}
+
+  - name: 'critical-alerts'
+    email_configs:
+      - to: 'admin@blog-platform.com,ops@blog-platform.com'
+        subject: '[紧急] {{ .GroupLabels.alertname }} - 博客平台严重告警'
+        body: |
+          🚨 严重告警 🚨
+          
+          {{ range .Alerts }}
+          告警名称: {{ .Annotations.summary }}
+          告警详情: {{ .Annotations.description }}
+          告警级别: {{ .Labels.severity }}
+          告警分类: {{ .Labels.category }}
+          服务: {{ .Labels.job }}
+          实例: {{ .Labels.instance }}
+          开始时间: {{ .StartsAt }}
+          
+          请立即处理此告警！
+          {{ end }}
+    # 钉钉通知配置（可选）
+    webhook_configs:
+      - url: 'https://oapi.dingtalk.com/robot/send?access_token=YOUR_DINGTALK_TOKEN'
+        send_resolved: true
+        http_config:
+          proxy_url: ''
+        title: '[紧急] 博客平台严重告警'
+        text: |
+          {{ range .Alerts }}
+          **告警名称**: {{ .Annotations.summary }}
+          **告警详情**: {{ .Annotations.description }}
+          **告警级别**: {{ .Labels.severity }}
+          **服务**: {{ .Labels.job }}
+          **开始时间**: {{ .StartsAt }}
+          {{ end }}
+
+  - name: 'security-alerts'
+    email_configs:
+      - to: 'security@blog-platform.com,admin@blog-platform.com'
+        subject: '[安全] {{ .GroupLabels.alertname }} - 博客平台安全告警'
+        body: |
+          🔒 安全告警 🔒
+          
+          {{ range .Alerts }}
+          告警名称: {{ .Annotations.summary }}
+          告警详情: {{ .Annotations.description }}
+          告警级别: {{ .Labels.severity }}
+          服务: {{ .Labels.job }}
+          开始时间: {{ .StartsAt }}
+          
+          请检查是否存在安全威胁！
+          {{ end }}
+
+  - name: 'business-alerts'
+    email_configs:
+      - to: 'business@blog-platform.com,admin@blog-platform.com'
+        subject: '[业务] {{ .GroupLabels.alertname }} - 博客平台业务告警'
+        body: |
+          📊 业务告警 📊
+          
+          {{ range .Alerts }}
+          告警名称: {{ .Annotations.summary }}
+          告警详情: {{ .Annotations.description }}
+          告警级别: {{ .Labels.severity }}
+          开始时间: {{ .StartsAt }}
+          
+          请检查业务功能是否正常！
+          {{ end }}
+
+  - name: 'performance-alerts'
+    email_configs:
+      - to: 'ops@blog-platform.com'
+        subject: '[性能] {{ .GroupLabels.alertname }} - 博客平台性能告警'
+        body: |
+          ⚡ 性能告警 ⚡
+          
+          {{ range .Alerts }}
+          告警名称: {{ .Annotations.summary }}
+          告警详情: {{ .Annotations.description }}
+          告警级别: {{ .Labels.severity }}
+          服务: {{ .Labels.job }}
+          开始时间: {{ .StartsAt }}
+          
+          请检查系统性能指标！
+          {{ end }}
+
+# 告警抑制规则
+inhibit_rules:
+  # 如果服务完全不可用，抑制其他相关告警
+  - source_match:
+      alertname: ServiceDown
+    target_match:
+      job: '{{ .Labels.job }}'
+    equal: ['job', 'instance']
+  
+  # 如果内存使用率过高，抑制GC时间告警
+  - source_match:
+      alertname: HighMemoryUsage
+    target_match:
+      alertname: HighGCTime
+    equal: ['job', 'instance']

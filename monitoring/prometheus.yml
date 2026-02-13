@@ -1,0 +1,66 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "prometheus-alerts.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Gateway service
+  - job_name: 'gateway'
+    static_configs:
+      - targets: ['gateway:8080']
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 15s
+
+  # User service
+  - job_name: 'user-service'
+    static_configs:
+      - targets: ['user-service:8081']
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 15s
+
+  # Article service
+  - job_name: 'article-service'
+    static_configs:
+      - targets: ['article-service:8082']
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 15s
+
+  # Comment service
+  - job_name: 'comment-service'
+    static_configs:
+      - targets: ['comment-service:8083']
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 15s
+
+  # Infrastructure services
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+
+  - job_name: 'mysql-user'
+    static_configs:
+      - targets: ['user-mysql:3306']
+
+  - job_name: 'mysql-article'
+    static_configs:
+      - targets: ['article-mysql:3306']
+
+  - job_name: 'mysql-comment'
+    static_configs:
+      - targets: ['comment-mysql:3306']
+
+  - job_name: 'elasticsearch'
+    static_configs:
+      - targets: ['elasticsearch:9200']

@@ -1,0 +1,13 @@
+-- 创建数据库
+CREATE DATABASE IF NOT EXISTS user_db DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS article_db DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS comment_db DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS file_db DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- 创建用户
+CREATE USER IF NOT EXISTS 'blog_user'@'%' IDENTIFIED BY 'blog123';
+GRANT ALL PRIVILEGES ON user_db.* TO 'blog_user'@'%';
+GRANT ALL PRIVILEGES ON article_db.* TO 'blog_user'@'%';
+GRANT ALL PRIVILEGES ON comment_db.* TO 'blog_user'@'%';
+GRANT ALL PRIVILEGES ON file_db.* TO 'blog_user'@'%';
+FLUSH PRIVILEGES;
